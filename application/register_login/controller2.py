@@ -7,17 +7,25 @@ def find_user(email):
 
 
 def add_new_user(all_values):
-    try:
-        result = mongo.db.UserCollection.insert_one(all_values)
-        return result
-    except Exception as e:
-        print(str(e))
+    result = mongo.db.UserCollection.insert_one(all_values)
+    return result
 
 
 def update_verify(email):
-    try:
-        result = mongo.db.UserCollection.update_one({"email": email}, {"$set": {"verified": True}})
-        result = True if result.acknowledged else False
-        return result
-    except Exception as e:
-        return str(e)
+    result = mongo.db.UserCollection.update_one(
+        {"email": email}, {"$set": {"verified": True}}
+    )
+    result = True if result.acknowledged else False
+    return result
+
+
+def update_new_pass(email, new_password):
+    result = mongo.db.UserCollection.update_one(
+        {"email": email}, {"$set": {"new_password": new_password}}
+    )
+    return result
+
+
+def delete_user(email):
+    result = mongo.db.UserCollection.delete_one({"email": email})
+    return result
