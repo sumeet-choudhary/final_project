@@ -1,24 +1,33 @@
-from pymongo import MongoClient, collection
-
-# client = MongoClient("mongodb://localhost:27017/Users")
-# print(client)
-# client.db.my_db.my_collection.insert_one({"Name": "Sumeet"})
-# mongodb://localhost:27017/Users/UserCollection/insertOne({"Name": "Sumeet"})
-
-my_document = client.db.UserCollection.insert_one({"Name": "ff"})
-# print(a)
-# def insert_in_colllection(email,etc):
-#     find=find_email()
+from application import mongo
 
 
-def add_new_user(email, password, verified, role):
-    try:
-        print(email, "l")
-        result = mongo.db.my_collection.insert_one({"email": email, "password": password, "role": role, "verified": verified})
-        if result:
-            return True
-        else:
-            return False
-    except Exception as e:
-        print(str(e))
+def find_user(email):
+    result = mongo.db.my_collection.find_one({"email": email})
+    return result
 
+
+def add_new_user(all_values):
+    result = mongo.db.my_collection.insert_one(all_values)
+    return result
+
+
+def update_verification(email):
+    result = mongo.db.my_collection.update_one({"email": email}, {"$set": {"verified": True}})
+    return result
+
+
+def update_new_pass(email, new_password):
+    result = mongo.db.my_collection.update_one({"email": email}, {"$set": {"password": new_password}})
+    return result
+
+
+# This is used to completely delete user info from our database but we can also soft delete which is used below to maintain the info
+# def delete_user(email):
+#     result = mongo.db.my_collection.delete_one({"email": email})
+#     result = True if result.acknowledged else False
+#     return result
+
+
+def soft_delete(email):
+    result = mongo.db.my_collection.update_one({"email": email}, {"$set": {"verified": False}})
+    return result
