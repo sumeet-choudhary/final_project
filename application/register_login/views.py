@@ -4,7 +4,7 @@ from application import api
 from datetime import datetime, timedelta
 import jwt
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
-from application.register_login.controller import add_new_user, find_user, update_verification, update_new_pass, soft_delete
+from application.register_login.controller import add_new_user, find_user, update_verification, update_new_pass, update_reset_password, soft_delete
 import os
 import bcrypt
 from email.message import EmailMessage
@@ -25,11 +25,11 @@ class Register(Resource):
             all_values = {"email": email, "password": hash_password, "role": role, "verified": verified}
 
             if email in [None, ""] or password in [None, ""]:
-                return make_response(jsonify({"Message": "Credential Not Found"}), 200)
+                return make_response(jsonify({"message": "Credentials Not Found"}), 200)
 
             already_a_user = find_user(email)
             if already_a_user:
-                return make_response(jsonify({"Message": "This User Already Exist"}), 200)
+                return make_response(jsonify({"message": "This User Already Exist"}), 200)
 
             else:
                 expire_token_time = datetime.now() + timedelta(minutes=15)
@@ -44,6 +44,7 @@ class Register(Resource):
                 subject = "Dear user"
                 body = f"Your verification link: " \
                        f"http://127.0.0.1:5000/verification?token={made_verification_token}"
+                # body = <a href= f"http://127.0.0.1:5000/verification?token={made_verification_token}">Your verification link:</a>
 
                 em = EmailMessage()
                 em["FROM"] = email_sender
@@ -95,7 +96,7 @@ class Login(Resource):
                         refresh_token = create_refresh_token(identity=email, expires_delta=timedelta(days=1))
                         return make_response(jsonify({"message": "you have login successfully", "access_token": access_token, "refresh_token": refresh_token}), 200)
                     else:
-                        return make_response(jsonify({"message": "wrong credentials"}), 500)
+                        return make_response(jsonify({"message": "wrong credentials, you can try changing password if you have forgotten"}), 500)
                 else:
                     return make_response(jsonify({"message": "first verify the email"}))
         except Exception as e:
@@ -107,7 +108,6 @@ class UpdatePassword(Resource):
     def post(self):
         try:
             email_from_token = get_jwt_identity()
-            # email_from_user = request.json.get("email", None)
             old_password = request.json.get("old_password", None).encode()
             new_password = request.json.get("new_password", None).encode()
             new_hash_password = bcrypt.hashpw(new_password, bcrypt.gensalt(8))
@@ -115,17 +115,70 @@ class UpdatePassword(Resource):
             already_in_db = find_user(email_from_token)
             password_in_db = already_in_db["password"]
 
-            # if email_token == email_from_user:
-            #if old_password == password_in_db:
             if bcrypt.checkpw(old_password, password_in_db):
                 update_new_pass(email_from_token, new_hash_password)
                 return make_response(jsonify({"message": "new password has been set"}))
             else:
                 return make_response(jsonify({"message": "entered old password doesnt match"}))
-            # else:
-            #     return make_response(jsonify({"message": "wrong email"}))
         except Exception as e:
             return make_response(jsonify({"error": str(e)}))
+
+
+class ForgotPassword(Resource):
+    def post(self):
+        try:
+            email = request.json.get("email", None)
+            already_in_db = find_user(email)
+            if email == already_in_db["email"]:
+                expire_token_time = datetime.now() + timedelta(minutes=15)
+                expire_epoch_time = int(expire_token_time.timestamp())
+                made_payload = {"email": email, "exp": expire_epoch_time}
+                made_verification_token = jwt.encode(made_payload, "sumeet", algorithm="HS256")
+                print(made_verification_token)
+
+                email_sender = "sumeetchoudhary777@gmail.com"
+                email_sender_password = os.environ.get("EMAIL_PASSWORD")
+                email_receiver = email
+                subject = "Forgot Password"
+                body = f"Your forgot password link: {made_verification_token}"
+
+                em = EmailMessage()
+                em["FROM"] = email_sender
+                em["TO"] = email_receiver
+                em["SUBJECT"] = subject
+                em.set_content(body)
+
+                with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                    smtp.login(email_sender, email_sender_password)
+                    smtp.sendmail(email_sender, email_receiver, em.as_string())
+
+                return make_response(jsonify({"message": "an email has been sent to reset password"}))
+            else:
+                return make_response(jsonify({"message": "wrong email"}))
+        except Exception as e:
+            return make_response(jsonify({"error": str(e)}))
+
+
+class ResetPassword(Resource):
+    def post(self):
+        try:
+            forgot_pass_email_token = request.json.get("token")
+            reset_new_password = request.json.get("reset_password", None).encode()
+            hashed_reset_new_password = bcrypt.hashpw(reset_new_password, bcrypt.gensalt(8))
+
+            if forgot_pass_email_token:
+                token_decoded = jwt.decode(forgot_pass_email_token, "sumeet", algorithms=["HS256"])
+                email = token_decoded["email"]
+                already_in_db = find_user(email)
+                verified = already_in_db["verified"]
+                if email == already_in_db["email"] and verified == True:
+                    update_reset_password(email, hashed_reset_new_password)
+                    return make_response(jsonify({"message": "new reset-password has been set"}))
+                else:
+                    return make_response(jsonify({"message": "something went wrong, try again"}))
+
+        except Exception as e:
+            return make_response(jsonify({"message": str(e)}))
 
 
 class DeleteUser(Resource):
@@ -133,9 +186,8 @@ class DeleteUser(Resource):
     def post(self):
         try:
             email_from_token = get_jwt_identity()
-            # password = request.json.get("password", None).encode()
-
             already_in_db = find_user(email_from_token)
+
             if already_in_db["role"] == "Admin":
                 if not already_in_db:
                     return make_response(jsonify({"message": "user not found"}))
@@ -146,6 +198,7 @@ class DeleteUser(Resource):
             else:
                 return make_response(jsonify({"message": "Only Admin have the permission to delete accounts"}))
         except Exception as e:
+
             return make_response(jsonify({"error": str(e)}))
 
 
@@ -153,6 +206,8 @@ api.add_resource(Register, "/register")
 api.add_resource(Verification, "/verification")
 api.add_resource(Login, "/login")
 api.add_resource(UpdatePassword, "/user/password/update")
+api.add_resource(ForgotPassword, "/user/forgot/password")
+api.add_resource(ResetPassword, "/user/reset/password")
 api.add_resource(DeleteUser, "/user/delete")
 
 
