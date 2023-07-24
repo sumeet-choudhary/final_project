@@ -129,32 +129,36 @@ class ForgotPassword(Resource):
         try:
             email = request.json.get("email", None)
             already_in_db = find_user(email)
-            if email == already_in_db["email"]:
-                expire_token_time = datetime.now() + timedelta(minutes=15)
-                expire_epoch_time = int(expire_token_time.timestamp())
-                made_payload = {"email": email, "exp": expire_epoch_time}
-                made_verification_token = jwt.encode(made_payload, "sumeet", algorithm="HS256")
-                print(made_verification_token)
+            verified = already_in_db["verified"]
 
-                email_sender = "sumeetchoudhary777@gmail.com"
-                email_sender_password = os.environ.get("EMAIL_PASSWORD")
-                email_receiver = email
-                subject = "Forgot Password"
-                body = f"Your forgot password link: {made_verification_token}"
+            if verified is True:
+                if email == already_in_db["email"]:
+                    expire_token_time = datetime.now() + timedelta(minutes=15)
+                    expire_epoch_time = int(expire_token_time.timestamp())
+                    made_payload = {"email": email, "exp": expire_epoch_time}
+                    made_verification_token = jwt.encode(made_payload, "sumeet", algorithm="HS256")
+                    print(made_verification_token)
 
-                em = EmailMessage()
-                em["FROM"] = email_sender
-                em["TO"] = email_receiver
-                em["SUBJECT"] = subject
-                em.set_content(body)
+                    email_sender = "sumeetchoudhary777@gmail.com"
+                    email_sender_password = os.environ.get("EMAIL_PASSWORD")
+                    email_receiver = email
+                    subject = "Forgot Password"
+                    body = f"Your forgot password link: {made_verification_token}"
 
-                with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-                    smtp.login(email_sender, email_sender_password)
-                    smtp.sendmail(email_sender, email_receiver, em.as_string())
+                    em = EmailMessage()
+                    em["FROM"] = email_sender
+                    em["TO"] = email_receiver
+                    em["SUBJECT"] = subject
+                    em.set_content(body)
 
-                return make_response(jsonify({"message": "an email has been sent to reset password"}))
-            else:
-                return make_response(jsonify({"message": "wrong email"}))
+                    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                        smtp.login(email_sender, email_sender_password)
+                        smtp.sendmail(email_sender, email_receiver, em.as_string())
+
+                    return make_response(jsonify({"message": "an email has been sent to reset password"}))
+                else:
+                    return make_response(jsonify({"message": "wrong email"}))
+            return make_response(jsonify({"message": "to reset the password, first you have to be a verified user"}))
         except Exception as e:
             return make_response(jsonify({"error": str(e)}))
 
@@ -171,11 +175,14 @@ class ResetPassword(Resource):
                 email = token_decoded["email"]
                 already_in_db = find_user(email)
                 verified = already_in_db["verified"]
-                if email == already_in_db["email"] and verified == True:
-                    update_reset_password(email, hashed_reset_new_password)
-                    return make_response(jsonify({"message": "new reset-password has been set"}))
-                else:
-                    return make_response(jsonify({"message": "something went wrong, try again"}))
+
+                if verified is True:
+                    if email == already_in_db["email"]:
+                        update_reset_password(email, hashed_reset_new_password)
+                        return make_response(jsonify({"message": "new reset-password has been set"}))
+                    else:
+                        return make_response(jsonify({"message": "wrong email"}))
+                return make_response(jsonify({"message": "to reset the password, first you have to be a verified user"}))
 
         except Exception as e:
             return make_response(jsonify({"message": str(e)}))
