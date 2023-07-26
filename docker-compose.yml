@@ -4,14 +4,31 @@ services:
   flask:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: flask_final_project
+      dockerfile: Dockerfile_flask
+    container_name: flask_container
     ports:
       - "5000:5000"
 
   mongodb:
     image: mongo
+    container_name: mongodb_container
     ports:
       - "27017:27017"
     volumes:
-      - .:/final_project
+      - ./mongodb:/data/db
+
+  rabbitmq:
+    image: rabbitmq
+    hostname: amqp
+    container_name: rabbitmq_container
+    ports:
+      - "5672:5672"
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile_celery
+    container_name: celery_container
+    depends_on:
+      - rabbitmq
+      - flask

@@ -8,7 +8,8 @@ from application.register_login.controller import add_new_user, find_user, updat
 import os
 import bcrypt
 from email.message import EmailMessage
-import smtplib  # to send email
+import smtplib
+from application.celery_config.celery_task import send_email
 
 
 register_login_blueprint = Blueprint("register_login_blueprint", __name__)
@@ -36,33 +37,17 @@ class Register(Resource):
                 expire_epoch_time = int(expire_token_time.timestamp())
                 made_payload = {"email": email, "exp": expire_epoch_time}
                 made_verification_token = jwt.encode(made_payload, "sumeet", algorithm="HS256")
-                # print(made_verification_token)
-
-                email_sender = "sumeetchoudhary777@gmail.com"
-                email_sender_password = os.environ.get("EMAIL_PASSWORD")
-                email_receiver = email
-                subject = "Dear user"
-                body = f"Your verification link: " \
-                       f"http://127.0.0.1:5000/verification?token={made_verification_token}"
-                # body = <a href= f"http://127.0.0.1:5000/verification?token={made_verification_token}">Your verification link:</a>
-
-                em = EmailMessage()
-                em["FROM"] = email_sender
-                em["TO"] = email_receiver
-                em["SUBJECT"] = subject
-                em.set_content(body)
-
-                with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-                    smtp.login(email_sender, email_sender_password)
-                    smtp.sendmail(email_sender, email_receiver, em.as_string())
 
                 if add_new_user(all_values):
-                    return make_response(jsonify({"message": "Registered successfully"}))
+                    result = send_email.delay(email, made_verification_token)
+                    # result = send_email.apply_async(args=[email, made_verification_token], countdown=3)
+                    if result:
+                        return make_response(jsonify({"message": "Registered successfully"}))
                 else:
                     return make_response(jsonify({"message": "Registered not successfully"}))
 
         except Exception as e:
-            return make_response(jsonify({"error": str(e)}))
+            return make_response(jsonify({"error": str(e)}, 500))
 
 
 class Verification(Resource):
@@ -137,7 +122,6 @@ class ForgotPassword(Resource):
                     expire_epoch_time = int(expire_token_time.timestamp())
                     made_payload = {"email": email, "exp": expire_epoch_time}
                     made_verification_token = jwt.encode(made_payload, "sumeet", algorithm="HS256")
-                    print(made_verification_token)
 
                     email_sender = "sumeetchoudhary777@gmail.com"
                     email_sender_password = os.environ.get("EMAIL_PASSWORD")

@@ -20,6 +20,7 @@ def update_new_pass(email, new_password):
     result = mongo.db.my_collection.update_one({"email": email}, {"$set": {"password": new_password}})
     return result
 
+
 def update_reset_password(email, reset_new_password):
     result = mongo.db.my_collection.update_one({"email": email}, {"$set": {"password": reset_new_password}})
     return result
