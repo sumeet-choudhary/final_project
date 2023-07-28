@@ -1,5 +1,3 @@
-import traceback
-
 from flask import Blueprint, request, make_response, jsonify
 from flask_restful import Resource
 from application import api
@@ -193,6 +191,11 @@ class DeleteUser(Resource):
             return make_response(jsonify({"error": str(e)}))
 
 
+class Default(Resource):
+    def get(self):
+        return make_response(jsonify({"message": "its running"}))
+
+
 api.add_resource(Register, "/register")
 api.add_resource(Verification, "/verification")
 api.add_resource(Login, "/login")
@@ -200,6 +203,6 @@ api.add_resource(UpdatePassword, "/user/password/update")
 api.add_resource(ForgotPassword, "/user/forgot/password")
 api.add_resource(ResetPassword, "/user/reset/password")
 api.add_resource(DeleteUser, "/user/delete")
-
+api.add_resource(Default, "/")
 
 

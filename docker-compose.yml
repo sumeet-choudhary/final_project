@@ -6,8 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile_flask
     container_name: flask_container
-    ports:
-      - "5000:5000"
+    expose:
+      - 8080
+#    ports:
+#      - "5000:5000"
 
   mongodb:
     image: mongo
@@ -32,3 +34,11 @@ services:
     depends_on:
       - rabbitmq
       - flask
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile_nginx
+    container_name: nginx_container
+    ports:
+      - "80:80"

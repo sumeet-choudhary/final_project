@@ -5,7 +5,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 
-@celery.task()
+@celery.task(task_name = "send_email")
 def send_email(email, made_verification_token):
     email_sender = os.environ.get("EMAIL_SENDER_EMAIL")
     email_sender_password = os.environ.get("EMAIL_SENDER_PASSWORD")
