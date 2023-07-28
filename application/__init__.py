@@ -14,5 +14,4 @@ app.config["MONGO_URI"] = "mongodb://mongodb:27017/Users"
 
 jwt = JWTManager(app)
 mongo = PyMongo(app)
-
 celery = make_celery(app)

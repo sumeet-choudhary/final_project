@@ -1,3 +1,5 @@
+import traceback
+
 from flask import Blueprint, request, make_response, jsonify
 from flask_restful import Resource
 from application import api
@@ -39,10 +41,8 @@ class Register(Resource):
                 made_verification_token = jwt.encode(made_payload, "sumeet", algorithm="HS256")
 
                 if add_new_user(all_values):
-                    result = send_email.delay(email, made_verification_token)
-                    # result = send_email.apply_async(args=[email, made_verification_token], countdown=3)
-                    if result:
-                        return make_response(jsonify({"message": "Registered successfully"}))
+                    send_email.delay(email, made_verification_token)
+                    return make_response(jsonify({"message": "Registered successfully"}))
                 else:
                     return make_response(jsonify({"message": "Registered not successfully"}))
 
