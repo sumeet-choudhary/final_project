@@ -2,3 +2,6 @@ venv
 .git
 .idea
 __pycache__
+/mongodb
+.env
+/mongodb
